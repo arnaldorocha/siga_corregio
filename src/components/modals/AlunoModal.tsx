@@ -16,7 +16,7 @@ const schema = z.object({
   telefone: z.string().max(20).optional(),
   telefone_responsavel: z.string().max(20).optional(),
   data_nascimento: z.string().optional(),
-  status: z.enum(["Ativo", "Inativo", "Trancado"]),
+  status: z.enum(["Ativo", "Inativo", "Trancado", "Cancelado", "Finalizado"]),
   turma_id: z.string().optional(),
   modalidade: z.string().optional(),
   tipo_aluno: z.string().optional(),
@@ -24,12 +24,13 @@ const schema = z.object({
   interesse_rematricula: z.string().optional(),
   observacao_rematricula: z.string().optional(),
   curso_indicado: z.string().optional(),
+  data_entrega_resultados: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 const defaults: FormValues = {
-  nome: "", email: "", telefone: "", telefone_responsavel: "", data_nascimento: "", status: "Ativo", turma_id: "", modalidade: "Presencial", tipo_aluno: "Normal", status_rematricula: "Pendente", interesse_rematricula: "", observacao_rematricula: "", curso_indicado: "",
+  nome: "", email: "", telefone: "", telefone_responsavel: "", data_nascimento: "", status: "Ativo", turma_id: "", modalidade: "Presencial", tipo_aluno: "Normal", status_rematricula: "Pendente", interesse_rematricula: "", observacao_rematricula: "", curso_indicado: "", data_entrega_resultados: "",
 };
 
 interface Props {
@@ -67,6 +68,7 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
           interesse_rematricula: editData.interesse_rematricula || "",
           observacao_rematricula: editData.observacao_rematricula || "",
           curso_indicado: editData.curso_indicado || "",
+          data_entrega_resultados: editData.data_entrega_resultados || "",
         });
       } else {
         form.reset(defaults);
@@ -88,6 +90,7 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
       interesse_rematricula: values.interesse_rematricula || null,
       observacao_rematricula: values.observacao_rematricula || null,
       curso_indicado: values.curso_indicado || null,
+      data_entrega_resultados: values.data_entrega_resultados ? new Date(values.data_entrega_resultados).toISOString() : null,
     };
     if (editData?.id) {
       await update.mutateAsync({ id: editData.id, ...payload });
@@ -140,7 +143,7 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="status" render={({ field }) => (
-                <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Ativo">Ativo</SelectItem><SelectItem value="Inativo">Inativo</SelectItem><SelectItem value="Trancado">Trancado</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Ativo">Ativo</SelectItem><SelectItem value="Inativo">Inativo</SelectItem><SelectItem value="Trancado">Trancado</SelectItem><SelectItem value="Cancelado">Cancelado</SelectItem><SelectItem value="Finalizado">Finalizado</SelectItem></SelectContent></Select><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="turma_id" render={({ field }) => (
                 <FormItem><FormLabel>Turma</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl><SelectContent>{turmas?.map((t: any) => (<SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>
@@ -152,6 +155,12 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
               )} />
               <FormField control={form.control} name="tipo_aluno" render={({ field }) => (
                 <FormItem><FormLabel>Tipo de Aluno</FormLabel><Select onValueChange={field.onChange} value={field.value || "Normal"}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Normal">Normal</SelectItem><SelectItem value="Reposição">Reposição</SelectItem><SelectItem value="Transferência">Transferência</SelectItem><SelectItem value="EAD">EAD</SelectItem><SelectItem value="Reserva">Reserva</SelectItem><SelectItem value="Colaborador">Colaborador</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+              )} />
+            </div>
+            <div className="border-t pt-4 mt-2">
+              <p className="text-sm font-semibold mb-3">Entrega de Resultados</p>
+              <FormField control={form.control} name="data_entrega_resultados" render={({ field }) => (
+                <FormItem><FormLabel>Data e Hora da Entrega</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
             </div>
             <div className="border-t pt-4 mt-2">

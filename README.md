@@ -1,3 +1,26 @@
+# SIGA Corregio - Sistema de Gestão Acadêmica
+
+**Autor**: Arnaldo Rocha Filho
+
+Sistema de gestão acadêmica desenvolvido para o CDI Corregio, incluindo funcionalidades de alunos, turmas, frequência, relatórios e notificações automáticas.
+
+## Funcionalidades
+
+- Gestão de alunos com status (Ativo, Inativo, Trancado, Cancelado, Finalizado)
+- Dashboard com distribuição de alunos
+- Agendamento de entrega de resultados com notificações
+- Filtros por professor para administradores
+- Relatórios e métricas
+
+## Tecnologias
+
+- React + TypeScript + Vite
+- Supabase (Backend e Database)
+- Tailwind CSS + Shadcn/ui
+- React Query
+
+---
+
 # Welcome to your Lovable project
 
 ## Project info

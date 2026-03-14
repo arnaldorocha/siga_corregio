@@ -120,9 +120,9 @@ export default function Dashboard() {
         { name: "Rematrícula", atual: Number(pctRematricula.toFixed(1)), meta: 10 },
       ],
       pieData: [
-        { name: "Em Andamento", value: modulosAndamento, fill: "hsl(var(--secondary))" },
-        { name: "Concluídos", value: modulosConcluidos, fill: "hsl(var(--primary))" },
-        { name: "Atrasados", value: modulosAtrasados, fill: "hsl(var(--destructive))" },
+        { name: "Ativos", value: alunosFiltrados.filter(a => a.status === 'Ativo').length, fill: "hsl(var(--primary))" },
+        { name: "Cancelados", value: alunosFiltrados.filter(a => a.status === 'Cancelado').length, fill: "hsl(var(--destructive))" },
+        { name: "Concluídos", value: alunosFiltrados.filter(a => a.status === 'Finalizado').length, fill: "hsl(var(--secondary))" },
       ],
     };
   }, [alunosFiltrados, frequenciasFiltradas, matriculasFiltradas, modulosAndamento, modulosConcluidos, modulosAtrasados]);
@@ -244,7 +244,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </Card>
           <Card className="p-5 border-0 shadow-sm">
-            <h3 className="font-semibold mb-4 text-sm">Distribuição de Módulos</h3>
+            <h3 className="font-semibold mb-4 text-sm">Distribuição de Alunos</h3>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie data={chartData.pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>

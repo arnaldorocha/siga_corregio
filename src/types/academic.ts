@@ -27,8 +27,9 @@ export interface Aluno {
   nome: string;
   telefone: string;
   email: string;
-  status: 'Ativo' | 'Inativo' | 'Trancado';
+  status: 'Ativo' | 'Inativo' | 'Trancado' | 'Cancelado' | 'Finalizado';
   turma_id: string;
+  data_entrega_resultados?: string;
 }
 
 export interface Matricula {
