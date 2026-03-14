@@ -233,7 +233,7 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
       interesse_rematricula: values.interesse_rematricula || null,
       observacao_rematricula: values.observacao_rematricula || null,
       curso_indicado: values.curso_indicado || null,
-      ...(hasEntregaColumn ? { data_entrega_resultados: values.data_entrega_resultados ? new Date(values.data_entrega_resultados).toISOString() : null } : {}),
+      ...(hasEntregaColumn && values.data_entrega_resultados ? { data_entrega_resultados: new Date(values.data_entrega_resultados).toISOString() } : {}),
     };
     let alunoId: string | undefined;
     if (editData?.id) {
