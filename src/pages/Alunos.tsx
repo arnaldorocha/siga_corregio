@@ -185,7 +185,7 @@ export default function Alunos() {
           </TableBody>
         </Table>
       </Card>
-      {canEdit && <AlunoModal open={modalOpen} onOpenChange={(o) => { setModalOpen(o); if (!o) setEditData(null); }} editData={editData} />}
+      {(canEdit || isProfessor) && <AlunoModal open={modalOpen} onOpenChange={(o) => { setModalOpen(o); if (!o) setEditData(null); }} editData={editData} />}
       {canEdit && <ImportExcel open={importOpen} onOpenChange={setImportOpen} targetTable="alunos" />}
 
       <Dialog open={!!transferModal} onOpenChange={(o) => !o && setTransferModal(null)}>

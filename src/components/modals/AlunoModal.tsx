@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -52,6 +52,7 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
   const { data: modulos } = useTable("modulos");
   const { data: matriculas } = useTable("matriculas");
   const { data: progressoModulos } = useTable("progresso_modulos");
+  const [hasEntregaColumn, setHasEntregaColumn] = useState<boolean | null>(null);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
@@ -76,6 +77,17 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
       initialCourseRef.current = selectedCursoId;
     }
   }, [selectedCursoId, form]);
+
+  // Check if the entrega result column exists in the current schema
+  useEffect(() => {
+    supabase
+      .from("alunos")
+      .select("data_entrega_resultados")
+      .limit(1)
+      .then(({ error }) => {
+        setHasEntregaColumn(!error);
+      });
+  }, []);
 
   // Reset form with editData when opening
   useEffect(() => {
@@ -191,7 +203,7 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
       interesse_rematricula: values.interesse_rematricula || null,
       observacao_rematricula: values.observacao_rematricula || null,
       curso_indicado: values.curso_indicado || null,
-      data_entrega_resultados: values.data_entrega_resultados ? new Date(values.data_entrega_resultados).toISOString() : null,
+      ...(hasEntregaColumn ? { data_entrega_resultados: values.data_entrega_resultados ? new Date(values.data_entrega_resultados).toISOString() : null } : {}),
     };
     let alunoId: string | undefined;
     if (editData?.id) {
@@ -298,12 +310,15 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
                 </FormItem>
               </div>
             </div>
-            <div className="border-t pt-4 mt-2">
-              <p className="text-sm font-semibold mb-3">Entrega de Resultados</p>
-              <FormField control={form.control} name="data_entrega_resultados" render={({ field }) => (
-                <FormItem><FormLabel>Data e Hora da Entrega</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-            </div>
+            {hasEntregaColumn !== false && (
+              <div className="border-t pt-4 mt-2">
+                <p className="text-sm font-semibold mb-3">Entrega de Resultados</p>
+                <FormField control={form.control} name="data_entrega_resultados" render={({ field }) => (
+                  <FormItem><FormLabel>Data e Hora da Entrega</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </div>
+            )}
+
             <div className="border-t pt-4 mt-2">
               <p className="text-sm font-semibold mb-3">Rematrícula</p>
               <div className="grid grid-cols-2 gap-4">
