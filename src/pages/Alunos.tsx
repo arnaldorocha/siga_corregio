@@ -1,0 +1,207 @@
+import { useState, useMemo } from "react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, ArrowRightLeft, Upload, Trash2, Search, Pencil } from "lucide-react";
+import { useTable, useDelete } from "@/hooks/useSupabaseQuery";
+import { AlunoModal } from "@/components/modals/AlunoModal";
+import { ImportExcel } from "@/components/ImportExcel";
+import { useUserRole, useProfessorTurmas } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+
+export default function Alunos() {
+  const { data: alunos = [], isLoading } = useTable("alunos");
+  const { data: turmas = [] } = useTable("turmas");
+  const { data: matriculas = [] } = useTable("matriculas");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
+  const [transferModal, setTransferModal] = useState<any>(null);
+  const [newTurmaId, setNewTurmaId] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const { canEdit } = useUserRole();
+  const { filterByTurma, loaded: turmasLoaded } = useProfessorTurmas();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const deleteAluno = useDelete("alunos");
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterTurma, setFilterTurma] = useState("all");
+  const [filterModalidade, setFilterModalidade] = useState("all");
+  const [filterTipo, setFilterTipo] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+
+  const alunosFiltrados = useMemo(() => {
+    if (!turmasLoaded) return [];
+    return filterByTurma(alunos).filter((a: any) => {
+      if (searchTerm && !a.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (filterTurma !== "all" && a.turma_id !== filterTurma) return false;
+      if (filterModalidade !== "all" && (a.modalidade || "Presencial") !== filterModalidade) return false;
+      if (filterTipo !== "all" && (a.tipo_aluno || "Normal") !== filterTipo) return false;
+      if (filterStatus !== "all" && a.status !== filterStatus) return false;
+      return true;
+    });
+  }, [alunos, searchTerm, filterTurma, filterModalidade, filterTipo, filterStatus, turmasLoaded, filterByTurma]);
+
+  const getTurmaNome = (id: string) => turmas.find((t: any) => t.id === id)?.nome || '-';
+
+  const handleTransfer = async () => {
+    if (!transferModal || !newTurmaId) return;
+    try {
+      await supabase.from("alunos").update({ turma_id: newTurmaId }).eq("id", transferModal.id);
+      const mat = matriculas.find((m: any) => m.aluno_id === transferModal.id && m.status === "Ativa");
+      if (mat) {
+        await supabase.from("matriculas").update({ turma_id: newTurmaId }).eq("id", mat.id);
+      }
+      queryClient.invalidateQueries({ queryKey: ["alunos"] });
+      queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+      toast({ title: "Transferência realizada!", description: `${transferModal.nome} transferido para ${getTurmaNome(newTurmaId)}` });
+      setTransferModal(null);
+      setNewTurmaId("");
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent, aluno: any) => {
+    e.stopPropagation();
+    if (confirm(`Excluir aluno "${aluno.nome}"?`)) {
+      deleteAluno.mutate(aluno.id);
+    }
+  };
+
+  return (
+    <div>
+      <div className="page-header flex items-center justify-between">
+        <div>
+          <h1 className="page-title">Alunos</h1>
+          <p className="page-description">Cadastro e gerenciamento de alunos</p>
+        </div>
+        {canEdit && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" />Importar Excel</Button>
+            <Button onClick={() => { setEditData(null); setModalOpen(true); }}><Plus className="h-4 w-4 mr-2" />Novo Aluno</Button>
+          </div>
+        )}
+      </div>
+
+      {/* Search & Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Pesquisar aluno..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={filterTurma} onValueChange={setFilterTurma}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Turma" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas turmas</SelectItem>
+            {turmas.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterModalidade} onValueChange={setFilterModalidade}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Modalidade" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="Presencial">Presencial</SelectItem>
+            <SelectItem value="EAD">EAD</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterTipo} onValueChange={setFilterTipo}>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos tipos</SelectItem>
+            <SelectItem value="Normal">Normal</SelectItem>
+            <SelectItem value="Reposição">Reposição</SelectItem>
+            <SelectItem value="Transferência">Transferência</SelectItem>
+            <SelectItem value="EAD">EAD</SelectItem>
+            <SelectItem value="Reserva">Reserva</SelectItem>
+            <SelectItem value="Colaborador">Colaborador</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[130px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos status</SelectItem>
+            <SelectItem value="Ativo">Ativo</SelectItem>
+            <SelectItem value="Inativo">Inativo</SelectItem>
+            <SelectItem value="Trancado">Trancado</SelectItem>
+            <SelectItem value="Cancelado">Cancelado</SelectItem>
+            <SelectItem value="Finalizado">Finalizado</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead><TableHead>Nascimento</TableHead><TableHead>Telefone</TableHead><TableHead>Tel. Responsável</TableHead><TableHead>Turma</TableHead><TableHead>Modalidade</TableHead><TableHead>Tipo</TableHead><TableHead>Status</TableHead>
+              {canEdit && <TableHead className="w-28">Ações</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(isLoading || !turmasLoaded) ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Carregando...</TableCell></TableRow> :
+            alunosFiltrados.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Nenhum aluno encontrado</TableCell></TableRow> :
+            alunosFiltrados.map((a: any) => (
+              <TableRow key={a.id} className="hover:bg-muted/50">
+                <TableCell className="font-medium">{a.nome}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{a.data_nascimento ? new Date(a.data_nascimento + "T12:00:00").toLocaleDateString("pt-BR") : "-"}</TableCell>
+                <TableCell className="text-xs">{a.telefone || "-"}</TableCell>
+                <TableCell className="text-xs">{a.telefone_responsavel || "-"}</TableCell>
+                <TableCell>{getTurmaNome(a.turma_id)}</TableCell>
+                <TableCell><Badge variant={a.modalidade === 'EAD' ? 'secondary' : 'outline'}>{a.modalidade || 'Presencial'}</Badge></TableCell>
+                <TableCell><Badge variant="outline">{a.tipo_aluno || 'Normal'}</Badge></TableCell>
+                <TableCell><Badge variant={a.status === 'Ativo' ? 'default' : a.status === 'Inativo' ? 'secondary' : 'destructive'}>{a.status}</Badge></TableCell>
+                {canEdit && (
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" title="Editar" onClick={() => { setEditData(a); setModalOpen(true); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" title="Transferir de turma" onClick={(e) => { e.stopPropagation(); setTransferModal(a); setNewTurmaId(""); }}>
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" title="Excluir" onClick={(e) => handleDelete(e, a)} className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+      {canEdit && <AlunoModal open={modalOpen} onOpenChange={(o) => { setModalOpen(o); if (!o) setEditData(null); }} editData={editData} />}
+      {canEdit && <ImportExcel open={importOpen} onOpenChange={setImportOpen} targetTable="alunos" />}
+
+      <Dialog open={!!transferModal} onOpenChange={(o) => !o && setTransferModal(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Transferir Aluno de Turma</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">Aluno: <strong>{transferModal?.nome}</strong></p>
+            <p className="text-sm text-muted-foreground">Turma atual: {transferModal ? getTurmaNome(transferModal.turma_id) : ""}</p>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Nova Turma</label>
+              <Select value={newTurmaId} onValueChange={setNewTurmaId}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {turmas.filter((t: any) => t.id !== transferModal?.turma_id).map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>{t.nome} - {t.turno}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleTransfer} disabled={!newTurmaId} className="w-full">Confirmar Transferência</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

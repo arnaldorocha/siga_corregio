@@ -1,0 +1,1 @@
+ALTER TABLE public.frequencias ADD COLUMN IF NOT EXISTS motivo text DEFAULT NULL;
