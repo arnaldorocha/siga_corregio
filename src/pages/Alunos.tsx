@@ -24,8 +24,8 @@ export default function Alunos() {
   const [transferModal, setTransferModal] = useState<any>(null);
   const [newTurmaId, setNewTurmaId] = useState("");
   const [importOpen, setImportOpen] = useState(false);
-  const { canEdit } = useUserRole();
-  const { filterByTurma, loaded: turmasLoaded } = useProfessorTurmas();
+  const { canEdit, isProfessor } = useUserRole();
+  const { filterByTurma, loaded: turmasLoaded, turmaIds } = useProfessorTurmas();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const deleteAluno = useDelete("alunos");
@@ -142,7 +142,7 @@ export default function Alunos() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead><TableHead>Nascimento</TableHead><TableHead>Telefone</TableHead><TableHead>Tel. Responsável</TableHead><TableHead>Turma</TableHead><TableHead>Modalidade</TableHead><TableHead>Tipo</TableHead><TableHead>Status</TableHead>
-              {canEdit && <TableHead className="w-28">Ações</TableHead>}
+              {(canEdit || isProfessor) && <TableHead className="w-28">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -158,21 +158,28 @@ export default function Alunos() {
                 <TableCell><Badge variant={a.modalidade === 'EAD' ? 'secondary' : 'outline'}>{a.modalidade || 'Presencial'}</Badge></TableCell>
                 <TableCell><Badge variant="outline">{a.tipo_aluno || 'Normal'}</Badge></TableCell>
                 <TableCell><Badge variant={a.status === 'Ativo' ? 'default' : a.status === 'Inativo' ? 'secondary' : 'destructive'}>{a.status}</Badge></TableCell>
-                {canEdit && (
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" title="Editar" onClick={() => { setEditData(a); setModalOpen(true); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" title="Transferir de turma" onClick={(e) => { e.stopPropagation(); setTransferModal(a); setNewTurmaId(""); }}>
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" title="Excluir" onClick={(e) => handleDelete(e, a)} className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                )}
+                {(() => {
+                  const canEditRow = canEdit || (isProfessor && turmaIds.includes(a.turma_id));
+                  return canEditRow ? (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" title="Editar" onClick={() => { setEditData(a); setModalOpen(true); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        {canEdit && (
+                          <>
+                            <Button size="sm" variant="ghost" title="Transferir de turma" onClick={(e) => { e.stopPropagation(); setTransferModal(a); setNewTurmaId(""); }}>
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" title="Excluir" onClick={(e) => handleDelete(e, a)} className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  ) : null;
+                })()}
               </TableRow>
             ))}
           </TableBody>
