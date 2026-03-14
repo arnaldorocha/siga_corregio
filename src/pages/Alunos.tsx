@@ -15,10 +15,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
-export default function Alunos() {
+interface AlunosProps {
+  title?: string;
+  description?: string;
+  showImport?: boolean;
+}
+
+export default function Alunos({
+  title = "Alunos",
+  description = "Cadastro e gerenciamento de alunos",
+  showImport = true,
+}: AlunosProps) {
   const { data: alunos = [], isLoading } = useTable("alunos");
   const { data: turmas = [] } = useTable("turmas");
   const { data: matriculas = [] } = useTable("matriculas");
+  const { data: cursos = [] } = useTable("cursos");
+  const { data: modulos = [] } = useTable("modulos");
+  const { data: progressoModulos = [] } = useTable("progresso_modulos");
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const [transferModal, setTransferModal] = useState<any>(null);
@@ -36,6 +49,39 @@ export default function Alunos() {
   const [filterModalidade, setFilterModalidade] = useState("all");
   const [filterTipo, setFilterTipo] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  const cursosById = useMemo(() => {
+    return (cursos || []).reduce((acc: Record<string, any>, curso: any) => {
+      acc[curso.id] = curso;
+      return acc;
+    }, {});
+  }, [cursos]);
+
+  const modulosById = useMemo(() => {
+    return (modulos || []).reduce((acc: Record<string, any>, modulo: any) => {
+      acc[modulo.id] = modulo;
+      return acc;
+    }, {});
+  }, [modulos]);
+
+  const matriculaByAlunoId = useMemo(() => {
+    const map: Record<string, any> = {};
+    (matriculas || []).forEach((m: any) => {
+      if (m.status === "Ativa") {
+        map[m.aluno_id] = m;
+      }
+    });
+    return map;
+  }, [matriculas]);
+
+  const progressoByMatriculaId = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (progressoModulos || []).forEach((p: any) => {
+      if (!map[p.matricula_id]) map[p.matricula_id] = [];
+      map[p.matricula_id].push(p);
+    });
+    return map;
+  }, [progressoModulos]);
 
   const alunosFiltrados = useMemo(() => {
     if (!turmasLoaded) return [];
@@ -80,12 +126,12 @@ export default function Alunos() {
     <div>
       <div className="page-header flex items-center justify-between">
         <div>
-          <h1 className="page-title">Alunos</h1>
-          <p className="page-description">Cadastro e gerenciamento de alunos</p>
+          <h1 className="page-title">{title}</h1>
+          <p className="page-description">{description}</p>
         </div>
         {canEdit && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" />Importar Excel</Button>
+            {showImport && <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" />Importar Excel</Button>}
             <Button onClick={() => { setEditData(null); setModalOpen(true); }}><Plus className="h-4 w-4 mr-2" />Novo Aluno</Button>
           </div>
         )}
@@ -141,26 +187,42 @@ export default function Alunos() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead><TableHead>Nascimento</TableHead><TableHead>Telefone</TableHead><TableHead>Tel. Responsável</TableHead><TableHead>Turma</TableHead><TableHead>Modalidade</TableHead><TableHead>Tipo</TableHead><TableHead>Status</TableHead>
+              <TableHead>Nome</TableHead><TableHead>Nascimento</TableHead><TableHead>Telefone</TableHead><TableHead>Tel. Responsável</TableHead><TableHead>Turma</TableHead><TableHead>Curso</TableHead><TableHead>Módulos</TableHead><TableHead>Modalidade</TableHead><TableHead>Tipo</TableHead><TableHead>Entrega</TableHead><TableHead>Status</TableHead>
               {(canEdit || isProfessor) && <TableHead className="w-28">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(isLoading || !turmasLoaded) ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Carregando...</TableCell></TableRow> :
-            alunosFiltrados.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Nenhum aluno encontrado</TableCell></TableRow> :
-            alunosFiltrados.map((a: any) => (
-              <TableRow key={a.id} className="hover:bg-muted/50">
-                <TableCell className="font-medium">{a.nome}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">{a.data_nascimento ? new Date(a.data_nascimento + "T12:00:00").toLocaleDateString("pt-BR") : "-"}</TableCell>
-                <TableCell className="text-xs">{a.telefone || "-"}</TableCell>
-                <TableCell className="text-xs">{a.telefone_responsavel || "-"}</TableCell>
-                <TableCell>{getTurmaNome(a.turma_id)}</TableCell>
-                <TableCell><Badge variant={a.modalidade === 'EAD' ? 'secondary' : 'outline'}>{a.modalidade || 'Presencial'}</Badge></TableCell>
-                <TableCell><Badge variant="outline">{a.tipo_aluno || 'Normal'}</Badge></TableCell>
-                <TableCell><Badge variant={a.status === 'Ativo' ? 'default' : a.status === 'Inativo' ? 'secondary' : 'destructive'}>{a.status}</Badge></TableCell>
-                {(() => {
-                  const canEditRow = canEdit || (isProfessor && turmaIds.includes(a.turma_id));
-                  return canEditRow ? (
+            {(isLoading || !turmasLoaded) ? <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground">Carregando...</TableCell></TableRow> :
+            alunosFiltrados.length === 0 ? <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground">Nenhum aluno encontrado</TableCell></TableRow> :
+            alunosFiltrados.map((a: any) => {
+              const matricula = matriculaByAlunoId[a.id];
+              const cursoNome = matricula ? cursosById[matricula.curso_id]?.nome || "-" : "-";
+              const modulosProgress = matricula ? progressoByMatriculaId[matricula.id] || [] : [];
+              const modulosLabel = modulosProgress
+                .map((p: any) => modulosById[p.modulo_id]?.nome)
+                .filter(Boolean)
+                .slice(0, 2)
+                .join(", ") || "-";
+              const entrega = a.data_entrega_resultados
+                ? new Date(a.data_entrega_resultados).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                : "-";
+
+              const canEditRow = canEdit || (isProfessor && turmaIds.includes(a.turma_id));
+
+              return (
+                <TableRow key={a.id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">{a.nome}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{a.data_nascimento ? new Date(a.data_nascimento + "T12:00:00").toLocaleDateString("pt-BR") : "-"}</TableCell>
+                  <TableCell className="text-xs">{a.telefone || "-"}</TableCell>
+                  <TableCell className="text-xs">{a.telefone_responsavel || "-"}</TableCell>
+                  <TableCell>{getTurmaNome(a.turma_id)}</TableCell>
+                  <TableCell>{cursoNome}</TableCell>
+                  <TableCell className="text-xs">{modulosLabel}</TableCell>
+                  <TableCell><Badge variant={a.modalidade === 'EAD' ? 'secondary' : 'outline'}>{a.modalidade || 'Presencial'}</Badge></TableCell>
+                  <TableCell><Badge variant="outline">{a.tipo_aluno || 'Normal'}</Badge></TableCell>
+                  <TableCell className="text-xs">{entrega}</TableCell>
+                  <TableCell><Badge variant={a.status === 'Ativo' ? 'default' : a.status === 'Inativo' ? 'secondary' : 'destructive'}>{a.status}</Badge></TableCell>
+                  {canEditRow ? (
                     <TableCell>
                       <div className="flex gap-1">
                         <Button size="sm" variant="ghost" title="Editar" onClick={() => { setEditData(a); setModalOpen(true); }}>
@@ -178,10 +240,10 @@ export default function Alunos() {
                         )}
                       </div>
                     </TableCell>
-                  ) : null;
-                })()}
-              </TableRow>
-            ))}
+                  ) : null}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Card>

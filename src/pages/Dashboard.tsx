@@ -121,6 +121,8 @@ export default function Dashboard() {
       ],
       pieData: [
         { name: "Ativos", value: alunosFiltrados.filter(a => a.status === 'Ativo').length, fill: "hsl(var(--primary))" },
+        { name: "Trancados", value: alunosFiltrados.filter(a => a.status === 'Trancado').length, fill: "hsl(var(--warning))" },
+        { name: "Inativos", value: alunosFiltrados.filter(a => a.status === 'Inativo').length, fill: "hsl(var(--muted-foreground))" },
         { name: "Cancelados", value: alunosFiltrados.filter(a => a.status === 'Cancelado').length, fill: "hsl(var(--destructive))" },
         { name: "Concluídos", value: alunosFiltrados.filter(a => a.status === 'Finalizado').length, fill: "hsl(var(--secondary))" },
       ],

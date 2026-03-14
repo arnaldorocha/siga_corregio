@@ -19,6 +19,7 @@ import Notificacoes from "@/pages/Notificacoes";
 import Configuracoes from "@/pages/Configuracoes";
 import ImportacaoDados from "@/pages/ImportacaoDados";
 import Rematriculas from "@/pages/Rematriculas";
+import MeusAlunos from "@/pages/MeusAlunos";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -49,6 +50,7 @@ const AppRoutes = () => (
       <Route path="/cursos" element={<Cursos />} />
       <Route path="/modulos" element={<Modulos />} />
       <Route path="/alunos" element={<Alunos />} />
+      <Route path="/meus-alunos" element={<MeusAlunos />} />
       <Route path="/matriculas" element={<Matriculas />} />
       <Route path="/timeline" element={<Timeline />} />
       <Route path="/frequencia" element={<Frequencia />} />

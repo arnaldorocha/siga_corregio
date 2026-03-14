@@ -29,6 +29,32 @@ const schema = z.object({
   observacao_rematricula: z.string().optional(),
   curso_indicado: z.string().optional(),
   data_entrega_resultados: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.modulos && data.modulos.length > 0 && !data.curso_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Selecione um curso antes de escolher módulos.",
+      path: ["curso_id"],
+    });
+  }
+
+  if (data.data_entrega_resultados) {
+    const entregaDate = new Date(data.data_entrega_resultados);
+    const now = new Date();
+    if (Number.isNaN(entregaDate.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Data inválida.",
+        path: ["data_entrega_resultados"],
+      });
+    } else if (entregaDate < now) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A data/hora deve ser no futuro.",
+        path: ["data_entrega_resultados"],
+      });
+    }
+  }
 });
 
 type FormValues = z.infer<typeof schema>;

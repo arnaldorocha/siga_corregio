@@ -16,6 +16,7 @@ const allMenuItems = [
   { title: "Cursos", url: "/cursos", icon: BookOpen, roles: null },
   { title: "Módulos", url: "/modulos", icon: Layers, roles: null },
   { title: "Alunos", url: "/alunos", icon: GraduationCap, roles: null },
+  { title: "Meus Alunos", url: "/meus-alunos", icon: GraduationCap, roles: ["professor"] as string[] },
   { title: "Matrículas", url: "/matriculas", icon: ClipboardList, roles: null },
   { title: "Linha do Tempo", url: "/timeline", icon: Clock, roles: null },
   { title: "Frequência", url: "/frequencia", icon: CalendarCheck, roles: null },
