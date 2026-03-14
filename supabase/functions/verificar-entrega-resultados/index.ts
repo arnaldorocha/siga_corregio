@@ -22,6 +22,20 @@ Deno.serve(async (req) => {
     const umaHoraDepois = new Date(agora);
     umaHoraDepois.setHours(umaHoraDepois.getHours() + 1);
 
+    // Skip if the column doesn't exist yet (e.g. migration not applied)
+    const { data: columnExists } = await supabase
+      .from("information_schema.columns")
+      .select("column_name")
+      .eq("table_name", "alunos")
+      .eq("column_name", "data_entrega_resultados");
+
+    if (!columnExists?.length) {
+      return new Response(
+        JSON.stringify({ success: true, message: "Campo data_entrega_resultados não existe, nenhum alerta será criado." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch students with entrega_resultados scheduled
     const { data: alunos, error } = await supabase
       .from("alunos")
