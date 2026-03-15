@@ -12,7 +12,7 @@ import { MatriculaEditModal } from "@/components/modals/MatriculaEditModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useUserRole, useProfessorTurmas } from "@/hooks/useUserRole";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export default function Matriculas() {
   const { data: matriculas = [], isLoading } = useTable("matriculas");
@@ -29,9 +29,9 @@ export default function Matriculas() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canEdit, isAdmin, isCoordenacao, isProfessor } = useUserRole();
-  const { filterByTurma: professorTurmas } = useProfessorTurmas();
+  const { turmaIds, filterByTurma: professorTurmas } = useProfessorTurmas();
 
-  const matriculasFiltradas = filterByTurma(matriculas);
+  const matriculasFiltradas = professorTurmas(matriculas);
 
   const getAluno = (id: string) => alunos.find((a: any) => a.id === id)?.nome || '-';
   const getCurso = (id: string) => cursos.find((c: any) => c.id === id)?.nome || '-';
@@ -99,7 +99,7 @@ export default function Matriculas() {
                   <TableCell className="font-medium">{getAluno(m.aluno_id)}</TableCell>
                   <TableCell>{getCurso(m.curso_id)}</TableCell>
                   <TableCell className="text-muted-foreground">{getTurma(m.turma_id)}</TableCell>
-                  <TableCell>{new Date(m.data_inicio).toLocaleDateString('pt-BR')}</TableCell>
+                  <TableCell>{m.data_inicio ? new Date(m.data_inicio).toLocaleDateString('pt-BR') : '-'}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-2 bg-muted rounded-full">
@@ -109,7 +109,7 @@ export default function Matriculas() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={m.status === 'Ativa' ? 'default' : m.status === 'Concluída' ? 'secondary' : 'destructive'}>{m.status}</Badge>
+                    <Badge variant={m.status === 'Ativa' ? 'default' : m.status === 'Concluída' ? 'secondary' : 'destructive'}>{m.status || 'Ativa'}</Badge>
                   </TableCell>
                   <TableCell>
                     {todosConcluidos(m.id) ? (
@@ -120,7 +120,7 @@ export default function Matriculas() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {(isAdmin || isCoordenacao || (isProfessor && professorTurmas(matriculas).some((mt: any) => mt.id === m.id))) && (
+                      {(isAdmin || isCoordenacao || (isProfessor && turmaIds.includes(m.turma_id))) && (
                         <Button 
                           size="sm" 
                           variant="outline" 
@@ -153,7 +153,7 @@ export default function Matriculas() {
           open={progressoModalOpen} 
           onOpenChange={setProgressoModalOpen} 
           matriculaId={selectedMatricula}
-          canEdit={isAdmin || isCoordenacao || (isProfessor && selectedMatricula ? professorTurmas(matriculas).some((mt: any) => mt.id === selectedMatricula) : false)}
+          canEdit={isAdmin || isCoordenacao || (isProfessor && selectedMatricula ? turmaIds.includes(matriculas.find(m => m.id === selectedMatricula)?.turma_id) : false)}
         />
       )}
       {(isAdmin || isCoordenacao) && (
@@ -163,6 +163,7 @@ export default function Matriculas() {
           matricula={selectedMatriculaEdit} 
         />
       )}
+
     </div>
   );
 }

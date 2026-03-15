@@ -27,6 +27,7 @@ export default function Frequencia() {
   const [saving, setSaving] = useState(false);
   const [view, setView] = useState<"registro" | "resumo">("registro");
   const [searchNome, setSearchNome] = useState<string>("");
+  const [professorId, setProfessorId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canManageFrequencia, isAdmin } = useUserRole();
@@ -36,8 +37,27 @@ export default function Frequencia() {
   const { data: alunos = [] } = useTable("alunos");
   const { data: matriculas = [] } = useTable("matriculas");
   const { data: frequencias = [] } = useTable("frequencias");
+  const { data: userRoles = [] } = useTable("user_roles");
+  const { data: profiles = [] } = useTable("profiles");
 
-  const turmasFiltradas = filterByTurma(turmas);
+  const professores = useMemo(() => {
+    const profRoles = userRoles.filter((r: any) => r.role === "professor");
+    return profRoles.map((r: any) => {
+      const profile = profiles.find((p: any) => p.user_id === r.user_id);
+      return {
+        user_id: r.user_id,
+        nome: profile?.display_name || "Sem nome",
+      };
+    });
+  }, [userRoles, profiles]);
+
+  const turmasFiltradas = useMemo(() => {
+    let filtered = filterByTurma(turmas);
+    if (isAdmin && professorId) {
+      filtered = filtered.filter((t: any) => t.professor_id === professorId);
+    }
+    return filtered;
+  }, [turmas, filterByTurma, isAdmin, professorId]);
 
   const alunosDaTurma = useMemo(() => {
     if (!turmaId) return [];
@@ -184,6 +204,22 @@ export default function Frequencia() {
               </SelectContent>
             </Select>
           </div>
+          {isAdmin && (
+            <div className="min-w-[200px]">
+              <label className="text-sm font-medium text-foreground mb-1 block">Professor</label>
+              <Select value={professorId} onValueChange={setProfessorId}>
+                <SelectTrigger><SelectValue placeholder="Todos os professores" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos os professores</SelectItem>
+                  {professores.map((prof: any) => (
+                    <SelectItem key={prof.user_id} value={prof.user_id}>
+                      {prof.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="min-w-[200px]">
             <label className="text-sm font-medium text-foreground mb-1 block">Nome do Aluno</label>
             <Input

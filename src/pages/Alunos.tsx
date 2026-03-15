@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ArrowRightLeft, Upload, Trash2, Search, Pencil } from "lucide-react";
+import { Plus, ArrowRightLeft, Upload, Trash2, Search, Pencil, Calendar } from "lucide-react";
 import { useTable, useDelete } from "@/hooks/useSupabaseQuery";
 import { AlunoModal } from "@/components/modals/AlunoModal";
 import { ImportExcel } from "@/components/ImportExcel";
@@ -37,6 +37,7 @@ export default function Alunos({
   const [transferModal, setTransferModal] = useState<any>(null);
   const [newTurmaId, setNewTurmaId] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [datasModal, setDatasModal] = useState<any>(null);
   const { canEdit, isProfessor } = useUserRole();
   const { filterByTurma, loaded: turmasLoaded, turmaIds } = useProfessorTurmas();
   const { toast } = useToast();
@@ -228,6 +229,9 @@ export default function Alunos({
                         <Button size="sm" variant="ghost" title="Editar" onClick={() => { setEditData(a); setModalOpen(true); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
+                        <Button size="sm" variant="ghost" title="Editar Datas" onClick={() => setDatasModal(a)}>
+                          <Calendar className="h-3.5 w-3.5" />
+                        </Button>
                         {canEdit && (
                           <>
                             <Button size="sm" variant="ghost" title="Transferir de turma" onClick={(e) => { e.stopPropagation(); setTransferModal(a); setNewTurmaId(""); }}>
@@ -268,6 +272,78 @@ export default function Alunos({
               </Select>
             </div>
             <Button onClick={handleTransfer} disabled={!newTurmaId} className="w-full">Confirmar Transferência</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!datasModal} onOpenChange={(o) => !o && setDatasModal(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Datas - {datasModal?.nome}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const matricula = matriculaByAlunoId[datasModal?.id];
+              if (!matricula) {
+                return <p className="text-muted-foreground">Este aluno não possui matrícula ativa.</p>;
+              }
+
+              const modulosProgress = progressoByMatriculaId[matricula.id] || [];
+
+              return (
+                <div className="space-y-4">
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-medium mb-2">Data de Início do Curso</h3>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        defaultValue={matricula.data_inicio}
+                        onChange={(e) => {
+                          // Aqui seria implementada a atualização da data de início
+                          console.log('Nova data início:', e.target.value);
+                        }}
+                      />
+                      <Button size="sm" variant="outline">Salvar</Button>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-medium mb-2">Datas dos Módulos</h3>
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {modulosProgress.map((prog: any) => {
+                        const modulo = modulosById[prog.modulo_id];
+                        return (
+                          <div key={prog.id} className="flex items-center gap-2 p-2 border rounded">
+                            <span className="flex-1 text-sm">{modulo?.nome || 'Módulo'}</span>
+                            <Input
+                              type="date"
+                              size="sm"
+                              className="w-32"
+                              defaultValue={prog.data_inicio}
+                              onChange={(e) => {
+                                // Aqui seria implementada a atualização da data de início do módulo
+                                console.log(`Nova data início módulo ${prog.id}:`, e.target.value);
+                              }}
+                            />
+                            <Input
+                              type="date"
+                              size="sm"
+                              className="w-32"
+                              defaultValue={prog.data_previsao_termino}
+                              onChange={(e) => {
+                                // Aqui seria implementada a atualização da data de término do módulo
+                                console.log(`Nova data fim módulo ${prog.id}:`, e.target.value);
+                              }}
+                            />
+                            <Button size="sm" variant="outline">Salvar</Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
