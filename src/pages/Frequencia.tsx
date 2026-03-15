@@ -32,7 +32,7 @@ export default function Frequencia() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canManageFrequencia, isAdmin } = useUserRole();
-  const { filterByTurma } = useProfessorTurmas();
+  const { filterByTurma, turmaIds, loaded: turmasLoaded } = useProfessorTurmas();
 
   const { data: turmas = [] } = useTable("turmas");
   const { data: alunos = [] } = useTable("alunos");
@@ -55,6 +55,7 @@ export default function Frequencia() {
   const { data: professorTurmas = [] } = useTable("professor_turmas");
 
   const turmasFiltradas = useMemo(() => {
+    if (!turmasLoaded) return [];
     let filtered = filterByTurma(turmas);
     if (isAdmin && professorId) {
       const turmasDoProfessor = professorTurmas
@@ -66,7 +67,7 @@ export default function Frequencia() {
       filtered = filtered.filter((t: any) => t.dia_semana === diaSemana);
     }
     return filtered;
-  }, [turmas, filterByTurma, isAdmin, professorId, diaSemana, professorTurmas]);
+  }, [turmas, filterByTurma, isAdmin, professorId, diaSemana, professorTurmas, turmasLoaded]);
 
   const alunosDaTurma = useMemo(() => {
     if (!turmaId) return [];
@@ -234,10 +235,14 @@ export default function Frequencia() {
         <div className="flex flex-wrap gap-4 items-end">
           <div className="min-w-[200px]">
             <label className="text-sm font-medium text-foreground mb-1 block">Turma</label>
-            <Select value={turmaId} onValueChange={(v) => { setTurmaId(v); setPresencas({}); setMotivos({}); }}>
+            <Select value={turmaId || "all"} onValueChange={(v) => { 
+              setTurmaId(v === "all" ? "" : v); 
+              setPresencas({}); 
+              setMotivos({}); 
+            }}>
               <SelectTrigger><SelectValue placeholder="Selecione a turma..." /></SelectTrigger>
               <SelectContent>
-                {view === "resumo" && <SelectItem value="">Todas as turmas</SelectItem>}
+                {view === "resumo" && <SelectItem value="all">Todas as turmas</SelectItem>}
                 {turmasFiltradas.map((t: any) => (
                   <SelectItem key={t.id} value={t.id}>{t.nome} - {t.turno}</SelectItem>
                 ))}

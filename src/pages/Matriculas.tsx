@@ -31,7 +31,7 @@ export default function Matriculas() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canEdit, isAdmin, isCoordenacao, isProfessor } = useUserRole();
-  const { filterByTurma } = useProfessorTurmas();
+  const { filterByTurma, turmaIds } = useProfessorTurmas();
 
   const getAluno = (id: string) => alunos.find((a: any) => a.id === id)?.nome || '-';
   const getCurso = (id: string) => cursos.find((c: any) => c.id === id)?.nome || '-';
