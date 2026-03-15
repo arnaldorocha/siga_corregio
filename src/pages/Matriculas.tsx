@@ -33,6 +33,10 @@ export default function Matriculas() {
   const { canEdit, isAdmin, isCoordenacao, isProfessor } = useUserRole();
   const { filterByTurma } = useProfessorTurmas();
 
+  const getAluno = (id: string) => alunos.find((a: any) => a.id === id)?.nome || '-';
+  const getCurso = (id: string) => cursos.find((c: any) => c.id === id)?.nome || '-';
+  const getTurma = (id: string) => turmas.find((t: any) => t.id === id)?.nome || '-';
+
   const matriculasFiltradas = useMemo(() => {
     const filtradasPorTurma = filterByTurma(matriculas);
     return filtradasPorTurma.filter((matricula: any) => {
@@ -40,11 +44,6 @@ export default function Matriculas() {
       return alunoNome.toLowerCase().includes(searchTerm.toLowerCase());
     });
   }, [matriculas, filterByTurma, searchTerm, alunos]);
-
-  const getAluno = (id: string) => alunos.find((a: any) => a.id === id)?.nome || '-';
-  const getCurso = (id: string) => cursos.find((c: any) => c.id === id)?.nome || '-';
-  const getTurma = (id: string) => turmas.find((t: any) => t.id === id)?.nome || '-';
-
   const getProgresso = (matriculaId: string) => {
     const prog = progressoModulos.filter((p: any) => p.matricula_id === matriculaId);
     const concluidos = prog.filter((p: any) => p.status === 'Concluído').length;

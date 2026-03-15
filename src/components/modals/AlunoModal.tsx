@@ -106,17 +106,8 @@ export function AlunoModal({ open, onOpenChange, editData }: Props) {
 
   // Check if the entrega result column exists in the current schema
   useEffect(() => {
-    supabase
-      .from("information_schema.columns")
-      .select("column_name")
-      .eq("table_name", "alunos")
-      .eq("column_name", "data_entrega_resultados")
-      .then(({ data }) => {
-        setHasEntregaColumn((data || []).length > 0);
-      })
-      .catch(() => {
-        setHasEntregaColumn(false);
-      });
+    // Simplified check - assume column exists for now
+    setHasEntregaColumn(true);
   }, []);
 
   // Reset form with editData when opening

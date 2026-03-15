@@ -237,6 +237,7 @@ export default function Frequencia() {
             <Select value={turmaId} onValueChange={(v) => { setTurmaId(v); setPresencas({}); setMotivos({}); }}>
               <SelectTrigger><SelectValue placeholder="Selecione a turma..." /></SelectTrigger>
               <SelectContent>
+                {view === "resumo" && <SelectItem value="">Todas as turmas</SelectItem>}
                 {turmasFiltradas.map((t: any) => (
                   <SelectItem key={t.id} value={t.id}>{t.nome} - {t.turno}</SelectItem>
                 ))}
