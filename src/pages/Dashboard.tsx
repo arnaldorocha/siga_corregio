@@ -8,7 +8,8 @@ import { useProfessorTurmas, useUserRole } from "@/hooks/useUserRole";
 import MetasDashboard from "@/components/MetasDashboard";
 import { AniversariosCard } from "@/components/AniversariosCard";
 import { DashboardDetailModal } from "@/components/DashboardDetailModal";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
+import { PieChart, Pie, Cell } from "recharts";
+import ParetoChart from "@/components/ui/ParetoChart";
 
 type ModalType = "ativos" | "andamento" | "concluidos" | "atrasados" | "alertas" | "faltas" | "turma_alunos";
 
@@ -98,36 +99,90 @@ export default function Dashboard() {
     const seteDias = new Date(hoje);
     seteDias.setDate(hoje.getDate() - 7);
     const seteDiasStr = seteDias.toISOString().split("T")[0];
-    const faltasSemana = new Set(frequenciasFiltradas.filter((f: any) => !f.presente && f.data >= seteDiasStr).map((f: any) => f.matricula_id)).size;
+    const faltasSemana = new Set(
+      frequenciasFiltradas
+        .filter((f: any) => !f.presente && f.data >= seteDiasStr)
+        .map((f: any) => f.matricula_id),
+    ).size;
     const pctFaltantes = (faltasSemana / totalAtivos) * 100;
 
     // Desistências (last 30 days)
     const trintaDias = new Date(hoje);
     trintaDias.setDate(hoje.getDate() - 30);
     const trintaDiasStr = trintaDias.toISOString().split("T")[0];
-    const desistencias = matriculasFiltradas.filter((m: any) => m.status === "Cancelada" && m.updated_at >= trintaDiasStr).length;
+    const desistencias = matriculasFiltradas.filter(
+      (m: any) => m.status === "Cancelada" && m.updated_at >= trintaDiasStr,
+    ).length;
     const pctDesistencia = (desistencias / totalAtivos) * 100;
 
     // Rematrículas (current year)
     const anoAtual = hoje.getFullYear();
-    const rematriculas = matriculasFiltradas.filter((m: any) => m.matricula_anterior_id && new Date(m.created_at).getFullYear() === anoAtual).length;
+    const rematriculas = matriculasFiltradas.filter(
+      (m: any) => m.matricula_anterior_id && new Date(m.created_at).getFullYear() === anoAtual,
+    ).length;
     const pctRematricula = (rematriculas / totalAtivos) * 100;
 
+    // Pareto data para distribuição de status (ativos, trancados, cancelados, concluídos)
+    const statusCounts = [
+      { name: "Ativos", value: alunosFiltrados.filter((a: any) => a.status === "Ativo").length },
+      { name: "Trancados", value: alunosFiltrados.filter((a: any) => a.status === "Trancado").length },
+      { name: "Cancelados", value: alunosFiltrados.filter((a: any) => a.status === "Cancelado").length },
+      { name: "Concluídos", value: alunosFiltrados.filter((a: any) => a.status === "Finalizado").length },
+    ];
+
+    const metaCancelamentosPct = 2; // Meta = 2% do total de alunos ativos
+    const metaRematriculaPct = 10; // Meta = 10% do total de alunos ativos
+
+    const statusParetoData = statusCounts
+      .slice()
+      .sort((a, b) => b.value - a.value)
+      .map((item) => ({
+        ...item,
+        percent: Number(((item.value / totalAtivos) * 100).toFixed(1)),
+        metaCancelamentos: metaCancelamentosPct,
+        metaRematricula: metaRematriculaPct,
+      }));
+
     return {
-      barData: [
-        { name: "Faltantes", atual: Number(pctFaltantes.toFixed(1)), meta: 8 },
-        { name: "Desistência", atual: Number(pctDesistencia.toFixed(1)), meta: 2 },
-        { name: "Rematrícula", atual: Number(pctRematricula.toFixed(1)), meta: 10 },
+      paretoMetaData: [
+        {
+          name: "Faltantes",
+          atual: Number(pctFaltantes.toFixed(1)),
+          meta: 8,
+          period: "Semanal",
+          metaLabel: "Meta semanal",
+        },
+        {
+          name: "Desistência",
+          atual: Number(pctDesistencia.toFixed(1)),
+          meta: 2,
+          period: "Mensal",
+          metaLabel: "Meta mensal",
+        },
+        {
+          name: "Rematrícula",
+          atual: Number(pctRematricula.toFixed(1)),
+          meta: 10,
+          period: "Anual / Contrato",
+          metaLabel: "Meta anual",
+        },
       ],
+      statusParetoData,
+      faltantesData: {
+        name: "Faltantes",
+        atual: Number(pctFaltantes.toFixed(1)),
+        meta: 8,
+        period: "Semanal",
+        metaLabel: "Meta semanal",
+      },
       pieData: [
-        { name: "Ativos", value: alunosFiltrados.filter(a => a.status === 'Ativo').length, fill: "hsl(var(--primary))" },
-        { name: "Trancados", value: alunosFiltrados.filter(a => a.status === 'Trancado').length, fill: "hsl(var(--warning))" },
-        { name: "Inativos", value: alunosFiltrados.filter(a => a.status === 'Inativo').length, fill: "hsl(var(--muted-foreground))" },
-        { name: "Cancelados", value: alunosFiltrados.filter(a => a.status === 'Cancelado').length, fill: "hsl(var(--destructive))" },
-        { name: "Concluídos", value: alunosFiltrados.filter(a => a.status === 'Finalizado').length, fill: "hsl(var(--secondary))" },
+        { name: "Ativos", value: statusCounts.find((s) => s.name === "Ativos")!.value, fill: "hsl(var(--primary))" },
+        { name: "Trancados", value: statusCounts.find((s) => s.name === "Trancados")!.value, fill: "hsl(var(--warning))" },
+        { name: "Cancelados", value: statusCounts.find((s) => s.name === "Cancelados")!.value, fill: "hsl(var(--destructive))" },
+        { name: "Concluídos", value: statusCounts.find((s) => s.name === "Concluídos")!.value, fill: "hsl(var(--secondary))" },
       ],
     };
-  }, [alunosFiltrados, frequenciasFiltradas, matriculasFiltradas, modulosAndamento, modulosConcluidos, modulosAtrasados]);
+  }, [alunosFiltrados, frequenciasFiltradas, matriculasFiltradas]);
 
   const openModal = (type: ModalType, tid?: string) => {
     setModalTurmaId(tid);
@@ -135,6 +190,12 @@ export default function Dashboard() {
   };
 
   const COLORS = ["hsl(var(--secondary))", "hsl(var(--primary))", "hsl(var(--destructive))"];
+  const statusColors: Record<string, string> = {
+    Ativos: "hsl(var(--primary))",
+    Trancados: "hsl(var(--warning))",
+    Cancelados: "hsl(var(--destructive))",
+    Concluídos: "hsl(var(--secondary))",
+  };
 
   return (
     <div>
@@ -230,33 +291,73 @@ export default function Dashboard() {
 
       {/* Charts */}
       {chartData && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
           <Card className="p-5 border-0 shadow-sm">
-            <h3 className="font-semibold mb-4 text-sm">Metas vs Realidade (%)</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData.barData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="atual" name="Atual %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="meta" name="Meta %" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-sm">Pareto - Metas vs Realidade (%)</h3>
+              <span className="text-[11px] text-muted-foreground">Meta = linha de referência</span>
+            </div>
+            <ParetoChart
+              data={chartData.paretoMetaData}
+              barKey="atual"
+              barName="Atual (%)"
+              barTheme="primary"
+              lineKey="meta"
+              lineName="Meta (%)"
+              lineTheme="muted-foreground"
+              yAxisFormatter={(value) => `${value}%`}
+              tooltipFormatter={(value: number, name, props) => {
+                const payload = (props as any)?.payload;
+                const period = payload?.payload?.period;
+                const metaLabel = payload?.payload?.metaLabel;
+                const suffix = period ? ` (${period})` : "";
+                const metaInfo = metaLabel ? ` • ${metaLabel}` : "";
+                return [`${value}%${suffix}${metaInfo}`, name];
+              }}
+            />
           </Card>
+
           <Card className="p-5 border-0 shadow-sm">
-            <h3 className="font-semibold mb-4 text-sm">Distribuição de Alunos</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={chartData.pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                  {chartData.pieData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <h3 className="font-semibold mb-4 text-sm">Pareto - Distribuição de Alunos</h3>
+            <ParetoChart
+              data={chartData.statusParetoData}
+              barKey="percent"
+              barName="% do total"
+              barTheme="primary"
+              yAxisFormatter={(value) => `${value}%`}
+              tooltipFormatter={(value: number, name, props) => {
+                const payload = (props as any)?.payload;
+                const count = payload?.payload?.value;
+                return count
+                  ? [`${value}% (${count.toLocaleString()} alunos)`, name]
+                  : [`${value}%`, name];
+              }}
+              cellColor={(entry) => statusColors[entry.name] || "hsl(var(--primary))"}
+              lines={[
+                { dataKey: "metaCancelamentos", name: "Meta Cancelamentos", color: "hsl(var(--destructive))", dash: "4 4" },
+                { dataKey: "metaRematricula", name: "Meta Rematrícula", color: "hsl(var(--secondary))", dash: "4 4" },
+              ]}
+              referenceLines={[
+                { y: 2, label: "Meta Cancelamentos (2%)", stroke: "hsl(var(--destructive))" },
+                { y: 10, label: "Meta Rematrículas (10%)", stroke: "hsl(var(--secondary))" },
+              ]}
+            />
+          </Card>
+
+          <Card className="p-5 border-0 shadow-sm">
+            <h3 className="font-semibold mb-4 text-sm">Faltantes vs Meta (%)</h3>
+            <ParetoChart
+              data={[chartData.faltantesData]}
+              barKey="atual"
+              barName="Atual (%)"
+              barTheme="primary"
+              lineKey="meta"
+              lineName="Meta (%)"
+              lineTheme="muted-foreground"
+              yAxisFormatter={(value) => `${value}%`}
+              tooltipFormatter={(value: number) => `${value}%`}
+              referenceLines={[{ y: 8, label: "Meta (8%)", stroke: "hsl(var(--muted-foreground))" }]}
+            />
           </Card>
         </div>
       )}
