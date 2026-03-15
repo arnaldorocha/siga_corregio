@@ -28,6 +28,7 @@ export default function Frequencia() {
   const [view, setView] = useState<"registro" | "resumo">("registro");
   const [searchNome, setSearchNome] = useState<string>("");
   const [professorId, setProfessorId] = useState<string>("");
+  const [diaSemana, setDiaSemana] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canManageFrequencia, isAdmin } = useUserRole();
@@ -51,13 +52,21 @@ export default function Frequencia() {
     });
   }, [userRoles, profiles]);
 
+  const { data: professorTurmas = [] } = useTable("professor_turmas");
+
   const turmasFiltradas = useMemo(() => {
     let filtered = filterByTurma(turmas);
     if (isAdmin && professorId) {
-      filtered = filtered.filter((t: any) => t.professor_id === professorId);
+      const turmasDoProfessor = professorTurmas
+        .filter((pt: any) => pt.user_id === professorId)
+        .map((pt: any) => pt.turma_id);
+      filtered = filtered.filter((t: any) => turmasDoProfessor.includes(t.id));
+    }
+    if (diaSemana !== "all") {
+      filtered = filtered.filter((t: any) => t.dia_semana === diaSemana);
     }
     return filtered;
-  }, [turmas, filterByTurma, isAdmin, professorId]);
+  }, [turmas, filterByTurma, isAdmin, professorId, diaSemana, professorTurmas]);
 
   const alunosDaTurma = useMemo(() => {
     if (!turmaId) return [];
@@ -141,11 +150,32 @@ export default function Frequencia() {
   };
 
   const resumoFaltas = useMemo(() => {
-    const matsFiltradas = filterByTurma(matriculas);
+    let matsFiltradas = filterByTurma(matriculas);
+    
+    // Aplicar filtro de professor se for admin
+    if (isAdmin && professorId) {
+      const turmasDoProfessor = professorTurmas
+        .filter((pt: any) => pt.user_id === professorId)
+        .map((pt: any) => pt.turma_id);
+      matsFiltradas = matsFiltradas.filter((m: any) => turmasDoProfessor.includes(m.turma_id));
+    }
+    
+    // Aplicar filtro de dia da semana
+    if (diaSemana !== "all") {
+      const turmasDoDia = turmas.filter((t: any) => t.dia_semana === diaSemana).map((t: any) => t.id);
+      matsFiltradas = matsFiltradas.filter((m: any) => turmasDoDia.includes(m.turma_id));
+    }
+    
+    // Aplicar filtro de turma específica se selecionada
+    if (turmaId) {
+      matsFiltradas = matsFiltradas.filter((m: any) => m.turma_id === turmaId);
+    }
+
     return matsFiltradas
-      .filter((m: any) => (!turmaId || m.turma_id === turmaId) && m.status === "Ativa")
+      .filter((m: any) => m.status === "Ativa")
       .map((m: any) => {
         const aluno = alunos.find((a: any) => a.id === m.aluno_id);
+        const turma = turmas.find((t: any) => t.id === m.turma_id);
         const freq = frequencias.filter((f: any) => f.matricula_id === m.id);
         const faltasGerais = freq.filter((f: any) => !f.presente).length;
         const total = freq.length;
@@ -163,10 +193,19 @@ export default function Frequencia() {
         if (faltasAoVivo === 2) nivel = "atencao";
         if (faltasAoVivo > 2) nivel = "critico";
 
-        return { matriculaId: m.id, nome: aluno?.nome || "-", faltasGerais, faltasAoVivo, total, presenca, nivel };
+        return { 
+          matriculaId: m.id, 
+          nome: aluno?.nome || "-", 
+          turma: turma?.nome || "-",
+          faltasGerais, 
+          faltasAoVivo, 
+          total, 
+          presenca, 
+          nivel 
+        };
       })
       .filter((f) => f.total > 0);
-  }, [matriculas, alunos, frequencias, turmaId, filterByTurma]);
+  }, [matriculas, alunos, frequencias, turmas, turmaId, filterByTurma, isAdmin, professorId, diaSemana, professorTurmas]);
 
   const nivelBadge = (nivel: string) => {
     if (nivel === "critico") return <Badge variant="destructive">Crítico</Badge>;
@@ -220,6 +259,22 @@ export default function Frequencia() {
               </Select>
             </div>
           )}
+          <div className="min-w-[200px]">
+            <label className="text-sm font-medium text-foreground mb-1 block">Dia da Semana</label>
+            <Select value={diaSemana} onValueChange={setDiaSemana}>
+              <SelectTrigger><SelectValue placeholder="Todos os dias" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os dias</SelectItem>
+                <SelectItem value="Segunda-feira">Segunda</SelectItem>
+                <SelectItem value="Terça-feira">Terça</SelectItem>
+                <SelectItem value="Quarta-feira">Quarta</SelectItem>
+                <SelectItem value="Quinta-feira">Quinta</SelectItem>
+                <SelectItem value="Sexta-feira">Sexta</SelectItem>
+                <SelectItem value="Sábado">Sábado</SelectItem>
+                <SelectItem value="Domingo">Domingo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="min-w-[200px]">
             <label className="text-sm font-medium text-foreground mb-1 block">Nome do Aluno</label>
             <Input
@@ -317,6 +372,7 @@ export default function Frequencia() {
             <TableHeader>
               <TableRow>
                 <TableHead>Aluno</TableHead>
+                <TableHead>Turma</TableHead>
                 <TableHead>Faltas ao Vivo</TableHead>
                 <TableHead>Faltas Gerais</TableHead>
                 <TableHead>Presenças</TableHead>
@@ -327,10 +383,11 @@ export default function Frequencia() {
             </TableHeader>
             <TableBody>
               {resumoFaltas.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nenhum registro.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Nenhum registro.</TableCell></TableRow>
               ) : resumoFaltas.map((f) => (
                 <TableRow key={f.matriculaId} className={f.nivel === "critico" ? "bg-destructive/5" : f.nivel === "atencao" ? "bg-warning/5" : ""}>
                   <TableCell className="font-medium">{f.nome}</TableCell>
+                  <TableCell>{f.turma}</TableCell>
                   <TableCell className="font-bold">{f.faltasAoVivo}</TableCell>
                   <TableCell>{f.faltasGerais}</TableCell>
                   <TableCell>{f.total - f.faltasGerais}</TableCell>
