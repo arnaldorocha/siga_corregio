@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, RefreshCw, FileSpreadsheet, Edit } from "lucide-react";
+import { Plus, RefreshCw, FileSpreadsheet, Edit, Search } from "lucide-react";
 import { ImportPlanejamento } from "@/components/ImportPlanejamento";
 import { useTable } from "@/hooks/useSupabaseQuery";
 import { MatriculaModal } from "@/components/modals/MatriculaModal";
@@ -26,12 +27,19 @@ export default function Matriculas() {
   const [selectedMatricula, setSelectedMatricula] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedMatriculaEdit, setSelectedMatriculaEdit] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canEdit, isAdmin, isCoordenacao, isProfessor } = useUserRole();
   const { filterByTurma } = useProfessorTurmas();
 
-  const matriculasFiltradas = useMemo(() => filterByTurma(matriculas), [matriculas, filterByTurma]);
+  const matriculasFiltradas = useMemo(() => {
+    const filtradasPorTurma = filterByTurma(matriculas);
+    return filtradasPorTurma.filter((matricula: any) => {
+      const alunoNome = getAluno(matricula.aluno_id);
+      return alunoNome.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  }, [matriculas, filterByTurma, searchTerm, alunos]);
 
   const getAluno = (id: string) => alunos.find((a: any) => a.id === id)?.nome || '-';
   const getCurso = (id: string) => cursos.find((c: any) => c.id === id)?.nome || '-';
@@ -83,6 +91,21 @@ export default function Matriculas() {
           </div>
         )}
       </div>
+      <Card className="p-4 mb-4">
+        <div className="flex items-center gap-4">
+          <div className="min-w-[300px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar aluno..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
       <Card>
         <Table>
           <TableHeader>

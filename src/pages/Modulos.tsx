@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Search } from "lucide-react";
 import { useTable, useDelete } from "@/hooks/useSupabaseQuery";
 import { ModuloModal } from "@/components/modals/ModuloModal";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -13,8 +14,15 @@ export default function Modulos() {
   const { data: cursos = [] } = useTable("cursos");
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const { canEdit } = useUserRole();
   const deleteModulo = useDelete("modulos");
+
+  const modulosFiltrados = useMemo(() => {
+    return modulos.filter((modulo: any) =>
+      modulo.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [modulos, searchTerm]);
 
   const getCursoNome = (id: string) => cursos.find((c: any) => c.id === id)?.nome || '-';
 
@@ -34,6 +42,21 @@ export default function Modulos() {
         </div>
         {canEdit && <Button onClick={() => { setEditData(null); setModalOpen(true); }}><Plus className="h-4 w-4 mr-2" />Novo Módulo</Button>}
       </div>
+      <Card className="p-4 mb-4">
+        <div className="flex items-center gap-4">
+          <div className="min-w-[300px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar módulo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
       <Card>
         <Table>
           <TableHeader>
@@ -44,7 +67,7 @@ export default function Modulos() {
           </TableHeader>
           <TableBody>
             {isLoading ? <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Carregando...</TableCell></TableRow> :
-            modulos.map((m: any) => (
+            modulosFiltrados.map((m: any) => (
               <TableRow key={m.id} className={canEdit ? "cursor-pointer hover:bg-muted/50" : ""} onClick={() => { if (canEdit) { setEditData(m); setModalOpen(true); } }}>
                 <TableCell><Badge variant="outline">{m.ordem}º</Badge></TableCell>
                 <TableCell className="font-medium">{m.nome}</TableCell>
