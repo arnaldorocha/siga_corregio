@@ -16,7 +16,8 @@ export function useUserRole() {
       .select("role")
       .eq("user_id", user.id)
       .then(({ data }) => {
-        setRoles((data || []).map((r: any) => r.role as AppRole));
+        const userRoles = (data || []).map((r: any) => r.role as AppRole);
+        setRoles(userRoles);
         setLoading(false);
       });
   }, [user]);
@@ -58,7 +59,12 @@ export function useProfessorTurmas() {
   // Helper to filter any array by turma_id
   const filterByTurma = <T extends Record<string, any>>(items: T[], turmaKey = "turma_id"): T[] => {
     if (filterAll) return items;
-    return items.filter((item) => turmaIds.includes(item[turmaKey]));
+    // If professor has specific turmas assigned, filter by them
+    if (turmaIds.length > 0) {
+      return items.filter((item) => turmaIds.includes(item[turmaKey]));
+    }
+    // If professor has no specific turmas assigned, show all (fallback)
+    return items;
   };
 
   return { turmaIds, filterAll, loaded, filterByTurma, isProfessor };
