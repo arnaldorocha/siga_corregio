@@ -197,6 +197,12 @@ export default function Dashboard() {
     Concluídos: "hsl(var(--secondary))",
   };
 
+  const metaColors: Record<string, string> = {
+    Faltantes: "hsl(var(--destructive))",
+    Desistências: "hsl(var(--warning))",
+    Rematrículas: "hsl(var(--secondary))",
+  };
+
   return (
     <div>
       <div className="page-header flex items-center justify-between flex-wrap gap-3">
@@ -301,19 +307,21 @@ export default function Dashboard() {
               data={chartData.paretoMetaData}
               barKey="atual"
               barName="Atual (%)"
-              barTheme="primary"
-              lineKey="meta"
-              lineName="Meta (%)"
-              lineTheme="muted-foreground"
               yAxisFormatter={(value) => `${value}%`}
               tooltipFormatter={(value: number, name, props) => {
                 const payload = (props as any)?.payload;
-                const period = payload?.payload?.period;
-                const metaLabel = payload?.payload?.metaLabel;
-                const suffix = period ? ` (${period})` : "";
-                const metaInfo = metaLabel ? ` • ${metaLabel}` : "";
-                return [`${value}%${suffix}${metaInfo}`, name];
+                const meta = payload?.payload?.meta;
+                return meta
+                  ? [`${value}% (Meta: ${meta}%)`, name]
+                  : [`${value}%`, name];
               }}
+              cellColor={(entry) => metaColors[entry.name] || "hsl(var(--primary))"}
+              lines={[
+                { dataKey: "meta", name: "Meta (%)", color: "hsl(var(--destructive))" },
+              ]}
+              referenceLines={[
+                { y: 80, label: "Meta Geral (80%)", stroke: "hsl(var(--destructive))" },
+              ]}
             />
           </Card>
 
@@ -323,7 +331,6 @@ export default function Dashboard() {
               data={chartData.statusParetoData}
               barKey="percent"
               barName="% do total"
-              barTheme="primary"
               yAxisFormatter={(value) => `${value}%`}
               tooltipFormatter={(value: number, name, props) => {
                 const payload = (props as any)?.payload;
@@ -334,8 +341,8 @@ export default function Dashboard() {
               }}
               cellColor={(entry) => statusColors[entry.name] || "hsl(var(--primary))"}
               lines={[
-                { dataKey: "metaCancelamentos", name: "Meta Cancelamentos", color: "hsl(var(--destructive))", dash: "4 4" },
-                { dataKey: "metaRematricula", name: "Meta Rematrícula", color: "hsl(var(--secondary))", dash: "4 4" },
+                { dataKey: "metaCancelamentos", name: "Meta Cancelamentos", color: "hsl(var(--destructive))" },
+                { dataKey: "metaRematricula", name: "Meta Rematrícula", color: "hsl(var(--secondary))" },
               ]}
               referenceLines={[
                 { y: 2, label: "Meta Cancelamentos (2%)", stroke: "hsl(var(--destructive))" },
@@ -350,13 +357,9 @@ export default function Dashboard() {
               data={[chartData.faltantesData]}
               barKey="atual"
               barName="Atual (%)"
-              barTheme="primary"
               lineKey="meta"
               lineName="Meta (%)"
-              lineTheme="muted-foreground"
               yAxisFormatter={(value) => `${value}%`}
-              tooltipFormatter={(value: number) => `${value}%`}
-              referenceLines={[{ y: 8, label: "Meta (8%)", stroke: "hsl(var(--muted-foreground))" }]}
             />
           </Card>
         </div>
