@@ -8,6 +8,7 @@ import { ImportPlanejamento } from "@/components/ImportPlanejamento";
 import { useTable } from "@/hooks/useSupabaseQuery";
 import { MatriculaModal } from "@/components/modals/MatriculaModal";
 import { ProgressoModal } from "@/components/modals/ProgressoModal";
+import { MatriculaEditModal } from "@/components/modals/MatriculaEditModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,6 +24,8 @@ export default function Matriculas() {
   const [importPlanOpen, setImportPlanOpen] = useState(false);
   const [progressoModalOpen, setProgressoModalOpen] = useState(false);
   const [selectedMatricula, setSelectedMatricula] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedMatriculaEdit, setSelectedMatriculaEdit] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canEdit, isAdmin, isCoordenacao, isProfessor } = useUserRole();
@@ -116,15 +119,26 @@ export default function Matriculas() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {(isAdmin || isCoordenacao || (isProfessor && professorTurmas(matriculas).some((mt: any) => mt.id === m.id))) && (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => { setSelectedMatricula(m.id); setProgressoModalOpen(true); }}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />Editar Progresso
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {(isAdmin || isCoordenacao || (isProfessor && professorTurmas(matriculas).some((mt: any) => mt.id === m.id))) && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => { setSelectedMatricula(m.id); setProgressoModalOpen(true); }}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />Progresso
+                        </Button>
+                      )}
+                      {(isAdmin || isCoordenacao) && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => { setSelectedMatriculaEdit(m); setEditModalOpen(true); }}
+                        >
+                          Editar
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -140,6 +154,13 @@ export default function Matriculas() {
           onOpenChange={setProgressoModalOpen} 
           matriculaId={selectedMatricula}
           canEdit={isAdmin || isCoordenacao || (isProfessor && selectedMatricula ? professorTurmas(matriculas).some((mt: any) => mt.id === selectedMatricula) : false)}
+        />
+      )}
+      {(isAdmin || isCoordenacao) && (
+        <MatriculaEditModal 
+          open={editModalOpen} 
+          onOpenChange={setEditModalOpen} 
+          matricula={selectedMatriculaEdit} 
         />
       )}
     </div>
