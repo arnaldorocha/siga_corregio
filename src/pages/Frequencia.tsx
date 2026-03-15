@@ -66,6 +66,12 @@ export default function Frequencia() {
     if (diaSemana !== "all") {
       filtered = filtered.filter((t: any) => t.dia_semana === diaSemana);
     }
+
+    // Caso o filtro de turmas retorne vazio (ex: professor sem turmas atribuídas), mostramos todas para evitar tela em branco
+    if (filtered.length === 0 && turmas.length > 0) {
+      return turmas;
+    }
+
     return filtered;
   }, [turmas, filterByTurma, isAdmin, professorId, diaSemana, professorTurmas, turmasLoaded]);
 
@@ -242,7 +248,7 @@ export default function Frequencia() {
             }}>
               <SelectTrigger><SelectValue placeholder="Selecione a turma..." /></SelectTrigger>
               <SelectContent>
-                {view === "resumo" && <SelectItem value="all">Todas as turmas</SelectItem>}
+                <SelectItem value="all">Todas as turmas</SelectItem>
                 {turmasFiltradas.map((t: any) => (
                   <SelectItem key={t.id} value={t.id}>{t.nome} - {t.turno}</SelectItem>
                 ))}
