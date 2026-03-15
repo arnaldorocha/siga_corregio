@@ -207,10 +207,10 @@ export default function Frequencia() {
           {isAdmin && (
             <div className="min-w-[200px]">
               <label className="text-sm font-medium text-foreground mb-1 block">Professor</label>
-              <Select value={professorId} onValueChange={setProfessorId}>
+              <Select value={professorId || "all"} onValueChange={(value) => setProfessorId(value === "all" ? "" : value)}>
                 <SelectTrigger><SelectValue placeholder="Todos os professores" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os professores</SelectItem>
+                  <SelectItem value="all">Todos os professores</SelectItem>
                   {professores.map((prof: any) => (
                     <SelectItem key={prof.user_id} value={prof.user_id}>
                       {prof.nome}

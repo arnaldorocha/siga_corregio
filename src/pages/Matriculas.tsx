@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,9 +29,9 @@ export default function Matriculas() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canEdit, isAdmin, isCoordenacao, isProfessor } = useUserRole();
-  const { turmaIds, filterByTurma: professorTurmas } = useProfessorTurmas();
+  const { filterByTurma } = useProfessorTurmas();
 
-  const matriculasFiltradas = professorTurmas(matriculas);
+  const matriculasFiltradas = useMemo(() => filterByTurma(matriculas), [matriculas, filterByTurma]);
 
   const getAluno = (id: string) => alunos.find((a: any) => a.id === id)?.nome || '-';
   const getCurso = (id: string) => cursos.find((c: any) => c.id === id)?.nome || '-';
