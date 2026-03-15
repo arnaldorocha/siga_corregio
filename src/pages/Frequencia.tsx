@@ -26,28 +26,46 @@ export default function Frequencia() {
   const [motivos, setMotivos] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [view, setView] = useState<"registro" | "resumo">("registro");
+  const [searchNome, setSearchNome] = useState<string>("");
+  const [diaSemana, setDiaSemana] = useState<string>("");
+  const [professorId, setProfessorId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { canManageFrequencia } = useUserRole();
+  const { canManageFrequencia, isAdmin } = useUserRole();
   const { filterByTurma } = useProfessorTurmas();
 
   const { data: turmas = [] } = useTable("turmas");
   const { data: alunos = [] } = useTable("alunos");
   const { data: matriculas = [] } = useTable("matriculas");
   const { data: frequencias = [] } = useTable("frequencias");
+  const { data: userRoles = [] } = useTable("user_roles");
+  const { data: profiles = [] } = useTable("profiles");
 
-  const turmasFiltradas = filterByTurma(turmas, "id");
+  const turmasFiltradas = useMemo(() => {
+    let filtered = filterByTurma(turmas, "id");
+    if (isAdmin && professorId) {
+      filtered = filtered.filter((t: any) => t.professor_id === professorId);
+    }
+    return filtered;
+  }, [turmas, filterByTurma, isAdmin, professorId]);
 
   const alunosDaTurma = useMemo(() => {
     if (!turmaId) return [];
-    return alunos
+    let filtered = alunos
       .filter((a: any) => a.turma_id === turmaId && a.status === "Ativo")
       .map((a: any) => {
         const matricula = matriculas.find((m: any) => m.aluno_id === a.id && m.turma_id === turmaId && m.status === "Ativa");
         return { ...a, matricula_id: matricula?.id };
       })
       .filter((a: any) => a.matricula_id);
-  }, [turmaId, alunos, matriculas]);
+
+    // Filtro por nome
+    if (searchNome) {
+      filtered = filtered.filter((a: any) => a.nome.toLowerCase().includes(searchNome.toLowerCase()));
+    }
+
+    return filtered;
+  }, [turmaId, alunos, matriculas, searchNome]);
 
   const dataStr = format(date, "yyyy-MM-dd");
   const frequenciaDoDia = useMemo(() => {
@@ -137,8 +155,19 @@ export default function Frequencia() {
 
         return { matriculaId: m.id, nome: aluno?.nome || "-", faltasGerais, faltasAoVivo, total, presenca, nivel };
       })
-      .filter((f) => f.total > 0);
-  }, [matriculas, alunos, frequencias, turmaId, filterByTurma]);
+      .filter((f) => f.total > 0)
+      .filter((f) => {
+        if (!diaSemana) return true;
+        // Filtrar alunos que têm pelo menos uma falta no dia da semana selecionado
+        const matricula = matriculas.find((m: any) => m.id === f.matriculaId);
+        if (!matricula) return false;
+        const freq = frequencias.filter((fr: any) => fr.matricula_id === matricula.id && !fr.presente);
+        return freq.some((fr: any) => {
+          const date = new Date(fr.data);
+          return date.getDay().toString() === diaSemana;
+        });
+      });
+  }, [matriculas, alunos, frequencias, turmaId, filterByTurma, diaSemana]);
 
   const nivelBadge = (nivel: string) => {
     if (nivel === "critico") return <Badge variant="destructive">Crítico</Badge>;
@@ -176,6 +205,35 @@ export default function Frequencia() {
               </SelectContent>
             </Select>
           </div>
+          {isAdmin && (
+            <div className="min-w-[200px]">
+              <label className="text-sm font-medium text-foreground mb-1 block">Professor</label>
+              <Select value={professorId} onValueChange={setProfessorId}>
+                <SelectTrigger><SelectValue placeholder="Todos os professores" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos os professores</SelectItem>
+                  {userRoles
+                    .filter((ur: any) => ur.role === 'professor')
+                    .map((ur: any) => {
+                      const profile = profiles.find((p: any) => p.user_id === ur.user_id);
+                      return (
+                        <SelectItem key={ur.user_id} value={ur.user_id}>
+                          {profile?.display_name || ur.user_id}
+                        </SelectItem>
+                      );
+                    })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="min-w-[200px]">
+            <label className="text-sm font-medium text-foreground mb-1 block">Nome do Aluno</label>
+            <Input
+              placeholder="Buscar por nome..."
+              value={searchNome}
+              onChange={(e) => setSearchNome(e.target.value)}
+            />
+          </div>
           {view === "registro" && (
             <div>
               <label className="text-sm font-medium text-foreground mb-1 block">Data</label>
@@ -189,6 +247,24 @@ export default function Frequencia() {
                   <Calendar mode="single" selected={date} onSelect={(d) => { if (d) { setDate(d); setPresencas({}); setMotivos({}); } }} locale={ptBR} className={cn("p-3 pointer-events-auto")} />
                 </PopoverContent>
               </Popover>
+            </div>
+          )}
+          {view === "resumo" && (
+            <div className="min-w-[200px]">
+              <label className="text-sm font-medium text-foreground mb-1 block">Dia da Semana</label>
+              <Select value={diaSemana} onValueChange={setDiaSemana}>
+                <SelectTrigger><SelectValue placeholder="Todos os dias" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos os dias</SelectItem>
+                  <SelectItem value="0">Domingo</SelectItem>
+                  <SelectItem value="1">Segunda-feira</SelectItem>
+                  <SelectItem value="2">Terça-feira</SelectItem>
+                  <SelectItem value="3">Quarta-feira</SelectItem>
+                  <SelectItem value="4">Quinta-feira</SelectItem>
+                  <SelectItem value="5">Sexta-feira</SelectItem>
+                  <SelectItem value="6">Sábado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>

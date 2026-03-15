@@ -3,10 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { Plus, RefreshCw, FileSpreadsheet, Edit } from "lucide-react";
 import { ImportPlanejamento } from "@/components/ImportPlanejamento";
 import { useTable } from "@/hooks/useSupabaseQuery";
 import { MatriculaModal } from "@/components/modals/MatriculaModal";
+import { ProgressoModal } from "@/components/modals/ProgressoModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,10 +21,12 @@ export default function Matriculas() {
   const { data: progressoModulos = [] } = useTable("progresso_modulos");
   const [modalOpen, setModalOpen] = useState(false);
   const [importPlanOpen, setImportPlanOpen] = useState(false);
+  const [progressoModalOpen, setProgressoModalOpen] = useState(false);
+  const [selectedMatricula, setSelectedMatricula] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { canEdit } = useUserRole();
-  const { filterByTurma } = useProfessorTurmas();
+  const { canEdit, isAdmin, isCoordenacao, isProfessor } = useUserRole();
+  const { filterByTurma: professorTurmas } = useProfessorTurmas();
 
   const matriculasFiltradas = filterByTurma(matriculas);
 
@@ -81,11 +84,11 @@ export default function Matriculas() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Aluno</TableHead><TableHead>Curso</TableHead><TableHead>Turma</TableHead><TableHead>Data Início</TableHead><TableHead>Progresso</TableHead><TableHead>Status</TableHead><TableHead>Certificado</TableHead>
+              <TableHead>Aluno</TableHead><TableHead>Curso</TableHead><TableHead>Turma</TableHead><TableHead>Data Início</TableHead><TableHead>Progresso</TableHead><TableHead>Status</TableHead><TableHead>Certificado</TableHead><TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Carregando...</TableCell></TableRow> :
+            {isLoading ? <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Carregando...</TableCell></TableRow> :
             matriculasFiltradas.map((m: any) => {
               const prog = getProgresso(m.id);
               return (
@@ -112,6 +115,17 @@ export default function Matriculas() {
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {(isAdmin || isCoordenacao || (isProfessor && professorTurmas(matriculas).some((mt: any) => mt.id === m.id))) && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => { setSelectedMatricula(m.id); setProgressoModalOpen(true); }}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />Editar Progresso
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -120,6 +134,14 @@ export default function Matriculas() {
       </Card>
       {canEdit && <MatriculaModal open={modalOpen} onOpenChange={setModalOpen} />}
       {canEdit && <ImportPlanejamento open={importPlanOpen} onOpenChange={setImportPlanOpen} />}
+      {(isAdmin || isCoordenacao || isProfessor) && (
+        <ProgressoModal 
+          open={progressoModalOpen} 
+          onOpenChange={setProgressoModalOpen} 
+          matriculaId={selectedMatricula}
+          canEdit={isAdmin || isCoordenacao || (isProfessor && selectedMatricula ? professorTurmas(matriculas).some((mt: any) => mt.id === selectedMatricula) : false)}
+        />
+      )}
     </div>
   );
 }
