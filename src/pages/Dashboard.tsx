@@ -1,17 +1,20 @@
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, GraduationCap, AlertTriangle, XCircle, CalendarX, TrendingUp, BookOpen, UserCog, Filter } from "lucide-react";
+import { Users, GraduationCap, AlertTriangle, XCircle, CalendarX, TrendingUp, BookOpen, UserCog, Filter, BarChart3, PieChart, Target } from "lucide-react";
 import { useTable } from "@/hooks/useSupabaseQuery";
 import { useProfessorTurmas, useUserRole } from "@/hooks/useUserRole";
 import MetasDashboard from "@/components/MetasDashboard";
 import { AniversariosCard } from "@/components/AniversariosCard";
 import { DashboardDetailModal } from "@/components/DashboardDetailModal";
-import { PieChart, Pie, Cell } from "recharts";
+import { PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 import ParetoChart from "@/components/ui/ParetoChart";
+import { ChartModal } from "@/components/ChartModal";
 
 type ModalType = "ativos" | "andamento" | "concluidos" | "atrasados" | "alertas" | "faltas" | "turma_alunos";
+type ChartModalType = "metas" | "distribuicao" | "faltantes" | null;
 
 export default function Dashboard() {
   const { isAdmin } = useUserRole();
@@ -28,6 +31,7 @@ export default function Dashboard() {
 
   const [filtroProf, setFiltroProf] = useState<string>("todos");
   const [modalType, setModalType] = useState<ModalType | null>(null);
+  const [chartModalType, setChartModalType] = useState<ChartModalType>(null);
   const [modalTurmaId, setModalTurmaId] = useState<string | undefined>();
 
   // Build professor list for admin filter
@@ -295,78 +299,61 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Charts */}
+      {/* Chart Buttons */}
       {chartData && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
-          <Card className="p-5 border-0 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm">Pareto - Metas vs Realidade (%)</h3>
-              <span className="text-[11px] text-muted-foreground">Meta = linha de referência</span>
-            </div>
-            <ParetoChart
-              data={chartData.paretoMetaData}
-              barKey="atual"
-              barName="Atual (%)"
-              yAxisFormatter={(value) => `${value}%`}
-              tooltipFormatter={(value: number, name, props) => {
-                const payload = (props as any)?.payload;
-                const meta = payload?.payload?.meta;
-                return meta
-                  ? [`${value}% (Meta: ${meta}%)`, name]
-                  : [`${value}%`, name];
-              }}
-              cellColor={(entry) => metaColors[entry.name] || "hsl(var(--primary))"}
-              lines={[
-                { dataKey: "meta", name: "Meta (%)", color: "hsl(var(--destructive))" },
-              ]}
-              referenceLines={[
-                { y: 80, label: "Meta Geral (80%)", stroke: "hsl(var(--destructive))" },
-              ]}
-            />
-          </Card>
+        <div className="mb-6">
+          <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            Análises Gráficas
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            <Button
+              variant="outline"
+              className="h-auto p-4 sm:p-6 flex flex-col items-center gap-3 hover:bg-primary/5 hover:border-primary/20 transition-all duration-200 group"
+              onClick={() => setChartModalType("metas")}
+            >
+              <div className="p-2 sm:p-3 bg-primary/10 group-hover:bg-primary/20 rounded-lg transition-colors">
+                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="font-medium text-sm sm:text-base">Metas vs Realidade</p>
+                <p className="text-xs text-muted-foreground mt-1">Faltantes, Desistências, Rematrículas</p>
+              </div>
+            </Button>
 
-          <Card className="p-5 border-0 shadow-sm">
-            <h3 className="font-semibold mb-4 text-sm">Pareto - Distribuição de Alunos</h3>
-            <ParetoChart
-              data={chartData.statusParetoData}
-              barKey="percent"
-              barName="% do total"
-              yAxisFormatter={(value) => `${value}%`}
-              tooltipFormatter={(value: number, name, props) => {
-                const payload = (props as any)?.payload;
-                const count = payload?.payload?.value;
-                return count
-                  ? [`${value}% (${count.toLocaleString()} alunos)`, name]
-                  : [`${value}%`, name];
-              }}
-              cellColor={(entry) => statusColors[entry.name] || "hsl(var(--primary))"}
-              lines={[
-                { dataKey: "metaCancelamentos", name: "Meta Cancelamentos", color: "hsl(var(--destructive))" },
-                { dataKey: "metaRematricula", name: "Meta Rematrícula", color: "hsl(var(--secondary))" },
-              ]}
-              referenceLines={[
-                { y: 2, label: "Meta Cancelamentos (2%)", stroke: "hsl(var(--destructive))" },
-                { y: 10, label: "Meta Rematrículas (10%)", stroke: "hsl(var(--secondary))" },
-              ]}
-            />
-          </Card>
+            <Button
+              variant="outline"
+              className="h-auto p-4 sm:p-6 flex flex-col items-center gap-3 hover:bg-secondary/5 hover:border-secondary/20 transition-all duration-200 group"
+              onClick={() => setChartModalType("distribuicao")}
+            >
+              <div className="p-2 sm:p-3 bg-secondary/10 group-hover:bg-secondary/20 rounded-lg transition-colors">
+                <PieChart className="h-6 w-6 sm:h-8 sm:w-8 text-secondary" />
+              </div>
+              <div className="text-center">
+                <p className="font-medium text-sm sm:text-base">Distribuição de Alunos</p>
+                <p className="text-xs text-muted-foreground mt-1">Ativos, Trancados, Cancelados</p>
+              </div>
+            </Button>
 
-          <Card className="p-5 border-0 shadow-sm">
-            <h3 className="font-semibold mb-4 text-sm">Faltantes vs Meta (%)</h3>
-            <ParetoChart
-              data={[chartData.faltantesData]}
-              barKey="atual"
-              barName="Atual (%)"
-              lineKey="meta"
-              lineName="Meta (%)"
-              yAxisFormatter={(value) => `${value}%`}
-            />
-          </Card>
+            <Button
+              variant="outline"
+              className="h-auto p-4 sm:p-6 flex flex-col items-center gap-3 hover:bg-destructive/5 hover:border-destructive/20 transition-all duration-200 group"
+              onClick={() => setChartModalType("faltantes")}
+            >
+              <div className="p-2 sm:p-3 bg-destructive/10 group-hover:bg-destructive/20 rounded-lg transition-colors">
+                <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-destructive" />
+              </div>
+              <div className="text-center">
+                <p className="font-medium text-sm sm:text-base">Faltantes vs Meta</p>
+                <p className="text-xs text-muted-foreground mt-1">Controle de frequência</p>
+              </div>
+            </Button>
+          </div>
         </div>
       )}
 
       {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
         {/* Turmas com vagas - clickable */}
         <Card className="p-5 border-0 shadow-sm">
           <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm">
@@ -444,6 +431,75 @@ export default function Dashboard() {
         turmaId={modalTurmaId}
         turmaIds={turmaIds}
         matriculaIds={matriculaIdsFinal}
+      />
+
+      {/* Chart Modals */}
+      <ChartModal
+        open={chartModalType === "metas"}
+        onOpenChange={(open) => setChartModalType(open ? "metas" : null)}
+        title="Pareto - Metas vs Realidade (%)"
+        chartData={chartData?.paretoMetaData || []}
+        chartConfig={{
+          barKey: "atual",
+          barName: "Atual (%)",
+          yAxisFormatter: (value) => `${value}%`,
+          tooltipFormatter: (value: number, name, props) => {
+            const payload = (props as any)?.payload;
+            const meta = payload?.payload?.meta;
+            return meta
+              ? [`${value}% (Meta: ${meta}%)`, name]
+              : [`${value}%`, name];
+          },
+          cellColor: (entry) => metaColors[entry.name] || "hsl(var(--primary))",
+          lines: [
+            { dataKey: "meta", name: "Meta (%)", color: "hsl(var(--destructive))" },
+          ],
+          referenceLines: [
+            { y: 80, label: "Meta Geral (80%)", stroke: "hsl(var(--destructive))" },
+          ],
+        }}
+      />
+
+      <ChartModal
+        open={chartModalType === "distribuicao"}
+        onOpenChange={(open) => setChartModalType(open ? "distribuicao" : null)}
+        title="Pareto - Distribuição de Alunos"
+        chartData={chartData?.statusParetoData || []}
+        chartConfig={{
+          barKey: "percent",
+          barName: "% do total",
+          yAxisFormatter: (value) => `${value}%`,
+          tooltipFormatter: (value: number, name, props) => {
+            const payload = (props as any)?.payload;
+            const count = payload?.payload?.value;
+            return count
+              ? [`${value}% (${count.toLocaleString()} alunos)`, name]
+              : [`${value}%`, name];
+          },
+          cellColor: (entry) => statusColors[entry.name] || "hsl(var(--primary))",
+          lines: [
+            { dataKey: "metaCancelamentos", name: "Meta Cancelamentos", color: "hsl(var(--destructive))" },
+            { dataKey: "metaRematricula", name: "Meta Rematrícula", color: "hsl(var(--secondary))" },
+          ],
+          referenceLines: [
+            { y: 2, label: "Meta Cancelamentos (2%)", stroke: "hsl(var(--destructive))" },
+            { y: 10, label: "Meta Rematrículas (10%)", stroke: "hsl(var(--secondary))" },
+          ],
+        }}
+      />
+
+      <ChartModal
+        open={chartModalType === "faltantes"}
+        onOpenChange={(open) => setChartModalType(open ? "faltantes" : null)}
+        title="Faltantes vs Meta (%)"
+        chartData={chartData ? [chartData.faltantesData] : []}
+        chartConfig={{
+          barKey: "atual",
+          barName: "Atual (%)",
+          lineKey: "meta",
+          lineName: "Meta (%)",
+          yAxisFormatter: (value) => `${value}%`,
+        }}
       />
     </div>
   );
