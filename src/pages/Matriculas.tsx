@@ -12,7 +12,7 @@ import { MatriculaEditModal } from "@/components/modals/MatriculaEditModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useUserRole, useProfessorTurmas } from "@/hooks/useUserRole";
 
 export default function Matriculas() {
   const { data: matriculas = [], isLoading } = useTable("matriculas");
